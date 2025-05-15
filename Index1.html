@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bot Assistant</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      background-color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 20px 30px;
+      max-width: 600px;
+      margin: auto;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 22px;
+      color: #2c3e50;
+    }
+
+    .conversation {
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+
+    .qa-pair {
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+
+    .label {
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #555;
+    }
+
+    .box {
+      background-color: #f4f6f8;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 16px;
+      white-space: pre-wrap;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 12px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🤖 Bot Assistant Panel</h2>
+
+    <div id="conversation" class="conversation">
+      <!-- Question/Answer pairs will appear here -->
+    </div>
+
+    <div class="footer">Powered by Bot@Work</div>
+  </div>
+
+  <script>
+    window.addEventListener("message", async function(event) {
+      const message = event?.data?.payload?.text;
+      if (!message) return;
+
+      const convDiv = document.getElementById("conversation");
+
+      // Create container for Q&A
+      const pairDiv = document.createElement("div");
+      pairDiv.className = "qa-pair";
+
+      const qLabel = document.createElement("div");
+      qLabel.className = "label";
+      qLabel.innerText = "Visitor Question:";
+
+      const qBox = document.createElement("div");
+      qBox.className = "box";
+      qBox.innerText = message;
+
+      const aLabel = document.createElement("div");
+      aLabel.className = "label";
+      aLabel.innerText = "Bot's Answer:";
+
+      const aBox = document.createElement("div");
+      aBox.className = "box";
+      aBox.innerText = "Thinking... 🤔";
+
+      pairDiv.appendChild(qLabel);
+      pairDiv.appendChild(qBox);
+      pairDiv.appendChild(aLabel);
+      pairDiv.appendChild(aBox);
+
+      convDiv.appendChild(pairDiv);
+      convDiv.scrollTop = convDiv.scrollHeight;
+
+      try {
+        const res = await fetch("https://beta-api.botatwork.com/trigger-task/506ef32a-4f82-4732-ad0c-bc00d5dd5707", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message })
+        });
+
+        const data = await res.json();
+        aBox.innerText = data?.reply || "No response from the bot.";
+      } catch (e) {
+        aBox.innerText = "❌ Error contacting the bot.";
+      }
+    });
+  </script>
+</body>
+</html>

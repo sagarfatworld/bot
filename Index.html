@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Bot Assistant</title>
   <style>
     body {
@@ -11,7 +11,6 @@
       padding: 20px;
       color: #333;
     }
-
     .container {
       background-color: #fff;
       border-radius: 12px;
@@ -20,31 +19,27 @@
       max-width: 600px;
       margin: auto;
     }
-
     h2 {
       margin-top: 0;
       font-size: 22px;
       color: #2c3e50;
     }
-
     .conversation {
       max-height: 400px;
       overflow-y: auto;
       padding-right: 10px;
+      margin-bottom: 20px;
     }
-
     .qa-pair {
       margin-bottom: 20px;
       border-bottom: 1px solid #eee;
       padding-bottom: 10px;
     }
-
     .label {
       font-weight: bold;
       margin-bottom: 5px;
       color: #555;
     }
-
     .box {
       background-color: #f4f6f8;
       border: 1px solid #ddd;
@@ -53,7 +48,6 @@
       font-size: 16px;
       white-space: pre-wrap;
     }
-
     .footer {
       text-align: center;
       margin-top: 20px;
@@ -67,20 +61,22 @@
     <h2>🤖 Bot Assistant Panel</h2>
 
     <div id="conversation" class="conversation">
-      <!-- Question/Answer pairs will appear here -->
+      <!-- Q&A pairs will appear here -->
     </div>
 
     <div class="footer">Powered by Bot@Work</div>
   </div>
 
+  <!-- LiveChat Agent SDK -->
+  <script src="https://unpkg.com/@livechat/agent-app-sdk@1.6.3/dist/agentapp.umd.min.js"></script>
+
   <script>
-    window.addEventListener("message", async function(event) {
-      const message = event?.data?.payload?.text;
-      if (!message) return;
+    // Keep track of the last answer box to update bot replies
+    let lastAnswerBox = null;
 
+    // Append Q&A pair to the conversation panel
+    function appendQA(question, answer) {
       const convDiv = document.getElementById("conversation");
-
-      // Create container for Q&A
       const pairDiv = document.createElement("div");
       pairDiv.className = "qa-pair";
 
@@ -90,7 +86,7 @@
 
       const qBox = document.createElement("div");
       qBox.className = "box";
-      qBox.innerText = message;
+      qBox.innerText = question;
 
       const aLabel = document.createElement("div");
       aLabel.className = "label";
@@ -98,7 +94,7 @@
 
       const aBox = document.createElement("div");
       aBox.className = "box";
-      aBox.innerText = "Thinking... 🤔";
+      aBox.innerText = answer;
 
       pairDiv.appendChild(qLabel);
       pairDiv.appendChild(qBox);
@@ -108,18 +104,62 @@
       convDiv.appendChild(pairDiv);
       convDiv.scrollTop = convDiv.scrollHeight;
 
-      try {
-        const res = await fetch("https://beta-api.botatwork.com/trigger-task/506ef32a-4f82-4732-ad0c-bc00d5dd5707", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message })
-        });
+      lastAnswerBox = aBox;
+    }
 
-        const data = await res.json();
-        aBox.innerText = data?.reply || "No response from the bot.";
-      } catch (e) {
-        aBox.innerText = "❌ Error contacting the bot.";
+    // Update the last bot answer displayed in the panel
+    function updateLastAnswer(text) {
+      if (lastAnswerBox) {
+        lastAnswerBox.innerText = text;
       }
+    }
+
+    // Call your Bot@Work API with visitor question
+    async function getBotReply(question) {
+      const payload = {
+        data: {
+          payload: {
+            override_model: "sonar",
+            clientQuestion: question
+          }
+        },
+        should_stream: false
+      };
+
+      const res = await fetch("https://api.botatwork.com/trigger-task/42eaa2c8-e8aa-43ad-b9b5-944981bce2a2", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": "bf2e2d7e409bc0d7545e14ae15a773a3"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error("Bot API error");
+
+      const data = await res.json();
+      return data?.reply || "🤖 No response from bot.";
+    }
+
+    // Initialize LiveChat Agent App SDK and listen for visitor messages
+    window.LiveChatAgentAppSDK.createWidget().then(widget => {
+      widget.on('message', async (message) => {
+        if (message.author.type === 'visitor') {
+          const visitorMessage = message.text;
+
+          appendQA(visitorMessage, "Thinking... 🤔");
+
+          try {
+            const botReply = await getBotReply(visitorMessage);
+            updateLastAnswer(botReply);
+
+            // Send bot reply as an agent message into chat window
+            widget.sendMessage(botReply);
+          } catch (err) {
+            updateLastAnswer("❌ Error contacting bot.");
+          }
+        }
+      });
     });
   </script>
 </body>

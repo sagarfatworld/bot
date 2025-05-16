@@ -138,7 +138,7 @@
       if (!res.ok) throw new Error("Bot API error");
 
       const data = await res.json();
-      return data?.reply || "🤖 No response from bot.";
+      return data?.data?.content || data?.message || "🤖 No response from bot.";
     }
 
     // Initialize LiveChat Agent App SDK and listen for visitor messages

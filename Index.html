@@ -58,7 +58,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>🤖 Bot Assistant Panel</h2>
+    <h2>🤖 Bot Assistant Panel 1</h2>
 
     <div id="conversation" class="conversation">
       <!-- Q&A pairs will appear here -->
@@ -114,7 +114,7 @@
       }
     }
 
-    // Call your Bot@Work API with visitor question
+    // 🔄 Updated getBotReply function with enhanced error handling
     async function getBotReply(question) {
       const payload = {
         data: {
@@ -126,19 +126,23 @@
         should_stream: false
       };
 
-      const res = await fetch("https://api.botatwork.com/trigger-task/42eaa2c8-e8aa-43ad-b9b5-944981bce2a2", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": "bf2e2d7e409bc0d7545e14ae15a773a3"
-        },
-        body: JSON.stringify(payload)
-      });
+      try {
+        const res = await fetch("https://api.botatwork.com/trigger-task/42eaa2c8-e8aa-43ad-b9b5-944981bce2a2", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": "bf cxvcnxfbmbgd7545e14ae15a773a3"
+          },
+          body: JSON.stringify(payload)
+        });
 
-      if (!res.ok) throw new Error("Bot API error");
-
-      const data = await res.json();
-      return data?.data?.content || data?.message || "🤖 No response from bot.";
+        const data = await res.json();
+        console.log("API Response:", data);
+        return data?.data?.content || data?.message || "🤖 No response from bot.";
+      } catch (e) {
+        console.error("API Error:", e);
+        return "❌ Error contacting bot.";
+      }
     }
 
     // Initialize LiveChat Agent App SDK and listen for visitor messages

@@ -73,11 +73,7 @@
   
   <div class="container">
     <h2>🤖 Bot Assistant Panel </h2>
-
-    <div id="conversation" class="conversation">
-      <!-- Q&A pairs will appear here -->
-    </div>
-
+    <div id="conversation" class="conversation"></div>
     <div class="footer">Powered by Bot@Work</div>
   </div>
 
@@ -161,47 +157,48 @@
       }
     }
 
-    // Initialize LiveChat widget
-    window.LiveChatAgentAppSDK.createWidget()
-      .then(widget => {
-        console.log("LiveChat SDK initialized");
-        updateStatus('Connected');
+    // ✅ Initialize Agent App SDK properly
+    LiveChatAgentAppSDK.init().then(() => {
+      console.log("LiveChat Agent App Initialized");
+      updateStatus('Connected');
 
-        widget.on('message', async (message) => {
-          console.log('Received message:', message);
+      // Listen to messages (chat_message event)
+      LiveChatAgentAppSDK.on('chat_message', async (event) => {
+        const message = event.payload;
 
-          if (message && message.author && message.author.type === 'visitor') {
-            const visitorMessage = message.text;
-            console.log('Processing visitor message:', visitorMessage);
+        if (message?.author?.type === 'visitor') {
+          const visitorMessage = message.text;
+          console.log('Visitor message received:', visitorMessage);
 
-            appendQA(visitorMessage, "Thinking... 🤔");
+          appendQA(visitorMessage, "Thinking... 🤔");
 
-            try {
-              const botReply = await getBotReply(visitorMessage);
-              updateLastAnswer(botReply);
-              await widget.sendMessage(botReply);
-              console.log('Bot reply sent:', botReply);
-            } catch (err) {
-              console.error('Error processing message:', err);
-              updateLastAnswer("❌ Error processing message");
-            }
+          try {
+            const botReply = await getBotReply(visitorMessage);
+            updateLastAnswer(botReply);
+
+            // Optional: send message back to chat
+            await LiveChatAgentAppSDK.sendMessage({
+              text: botReply,
+              customId: `bot-reply-${Date.now()}`,
+            });
+
+            console.log('Bot reply sent:', botReply);
+          } catch (err) {
+            console.error('Error replying to message:', err);
+            updateLastAnswer("❌ Error replying");
           }
-        });
-
-        widget.on('error', (error) => {
-          console.error('LiveChat error:', error);
-          updateStatus('Error');
-        });
-
-        widget.on('disconnected', () => {
-          console.log('Disconnected from LiveChat');
-          updateStatus('Disconnected');
-        });
-      })
-      .catch(error => {
-        console.error('Failed to initialize LiveChat:', error);
-        updateStatus('Initialization Failed');
+        }
       });
+
+      LiveChatAgentAppSDK.on('error', (error) => {
+        console.error('LiveChat error:', error);
+        updateStatus('Error');
+      });
+
+    }).catch(error => {
+      console.error("LiveChat Init Failed:", error);
+      updateStatus("Initialization Failed");
+    });
   </script>
 </body>
 </html>

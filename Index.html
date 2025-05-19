@@ -20,14 +20,12 @@
       margin: auto;
     }
     h2 {
-      margin-top: 0;
       font-size: 22px;
       color: #2c3e50;
     }
     .conversation {
       max-height: 400px;
       overflow-y: auto;
-      padding-right: 10px;
       margin-bottom: 20px;
     }
     .qa-pair {
@@ -50,47 +48,25 @@
     }
     .footer {
       text-align: center;
-      margin-top: 20px;
       font-size: 12px;
       color: #aaa;
-    }
-    .status-indicator {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      padding: 5px 10px;
-      border-radius: 5px;
-      background: #ff4444;
-      color: white;
-    }
-    .status-indicator.connected {
-      background: #44ff44;
     }
   </style>
 </head>
 <body>
-  <div id="status" class="status-indicator">Disconnected</div>
-  
   <div class="container">
-    <h2>🤖 Bot Assistant Panel </h2>
+    <h2>🤖 Bot Assistant Panel</h2>
     <div id="conversation" class="conversation"></div>
     <div class="footer">Powered by Bot@Work</div>
   </div>
 
-  <!-- LiveChat Agent SDK -->
-  <script src="https://unpkg.com/@livechat/agent-app-sdk@1.6.3/dist/agentapp.umd.min.js"></script>
-
   <script>
-    let lastAnswerBox = null;
-
-    function updateStatus(status) {
-      const statusEl = document.getElementById('status');
-      statusEl.textContent = status;
-      statusEl.className = 'status-indicator ' + (status === 'Connected' ? 'connected' : '');
-    }
+    const BACKEND_URL = "https://your-backend-url.onrender.com"; // Change this to your actual backend URL
 
     function appendQA(question, answer) {
       const convDiv = document.getElementById("conversation");
+      convDiv.innerHTML = ""; // Show only latest
+
       const pairDiv = document.createElement("div");
       pairDiv.className = "qa-pair";
 
@@ -104,7 +80,7 @@
 
       const aLabel = document.createElement("div");
       aLabel.className = "label";
-      aLabel.innerText = "Bot's Answer:";
+      aLabel.innerText = "Bot Suggestion:";
 
       const aBox = document.createElement("div");
       aBox.className = "box";
@@ -114,90 +90,33 @@
       pairDiv.appendChild(qBox);
       pairDiv.appendChild(aLabel);
       pairDiv.appendChild(aBox);
-
       convDiv.appendChild(pairDiv);
-      convDiv.scrollTop = convDiv.scrollHeight;
-
-      lastAnswerBox = aBox;
     }
 
-    function updateLastAnswer(text) {
-      if (lastAnswerBox) {
-        lastAnswerBox.innerText = text;
-      }
-    }
-
-    async function getBotReply(question) {
-      const payload = {
-        data: {
-          payload: {
-            override_model: "sonar",
-            clientQuestion: question
-          }
-        },
-        should_stream: false
-      };
-
+    async function fetchBotAnswer(chatId) {
       try {
-        const res = await fetch("https://api.botatwork.com/trigger-task/42eaa2c8-e8aa-43ad-b9b5-944981bce2a2", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": "bf2e2d7e409bc0d7545e14ae15a773a3"
-          },
-          body: JSON.stringify(payload)
-        });
-
+        const res = await fetch(`${BACKEND_URL}/get-bot-answer?chat_id=${chatId}`);
         const data = await res.json();
-        console.log("API Response:", data);
-        return data?.data?.content || data?.message || "🤖 No response from bot.";
-      } catch (e) {
-        console.error("API Error:", e);
-        return "❌ Error contacting bot.";
+        if (data.question && data.botReply) {
+          appendQA(data.question, data.botReply);
+        } else {
+          appendQA("No visitor message", "No bot suggestion yet.");
+        }
+      } catch (err) {
+        console.error("Error fetching bot reply:", err);
+        appendQA("Error", "❌ Could not load bot suggestion.");
       }
     }
 
-    // ✅ Initialize Agent App SDK properly
-    LiveChatAgentAppSDK.init().then(() => {
-      console.log("LiveChat Agent App Initialized");
-      updateStatus('Connected');
-
-      // Listen to messages (chat_message event)
-      LiveChatAgentAppSDK.on('chat_message', async (event) => {
-        const message = event.payload;
-
-        if (message?.author?.type === 'visitor') {
-          const visitorMessage = message.text;
-          console.log('Visitor message received:', visitorMessage);
-
-          appendQA(visitorMessage, "Thinking... 🤔");
-
-          try {
-            const botReply = await getBotReply(visitorMessage);
-            updateLastAnswer(botReply);
-
-            // Optional: send message back to chat
-            await LiveChatAgentAppSDK.sendMessage({
-              text: botReply,
-              customId: `bot-reply-${Date.now()}`,
-            });
-
-            console.log('Bot reply sent:', botReply);
-          } catch (err) {
-            console.error('Error replying to message:', err);
-            updateLastAnswer("❌ Error replying");
-          }
-        }
-      });
-
-      LiveChatAgentAppSDK.on('error', (error) => {
-        console.error('LiveChat error:', error);
-        updateStatus('Error');
-      });
-
-    }).catch(error => {
-      console.error("LiveChat Init Failed:", error);
-      updateStatus("Initialization Failed");
+    // Get chat_id from query string
+    window.addEventListener("DOMContentLoaded", () => {
+      const params = new URLSearchParams(window.location.search);
+      const chatId = params.get("chat_id");
+      if (chatId) {
+        fetchBotAnswer(chatId);
+      } else {
+        appendQA("No chat selected", "Unable to find chat ID.");
+      }
     });
   </script>
 </body>

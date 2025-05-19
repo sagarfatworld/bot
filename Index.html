@@ -2,13 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bot Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       background-color: #f9f9f9;
@@ -24,8 +20,6 @@
       padding: 20px 30px;
       max-width: 600px;
       margin: auto;
-      display: flex;
-      flex-direction: column;
     }
 
     h2 {
@@ -61,39 +55,33 @@
       padding: 12px;
       font-size: 16px;
       white-space: pre-wrap;
-      word-wrap: break-word;
     }
 
     .manual-test {
       display: flex;
-      flex-direction: row;
+      flex-direction: column;
       gap: 10px;
-      flex-wrap: wrap;
     }
 
     .manual-test input {
-      flex: 1 1 60%;
-      min-width: 150px;
       padding: 10px;
       font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 100%;
     }
 
     .manual-test button {
-      flex: 1 1 35%;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    .submit-btn {
       background-color: #28a745;
       color: white;
       border: none;
+      padding: 12px;
+      font-size: 16px;
       border-radius: 6px;
-      transition: background-color 0.3s ease;
+      cursor: pointer;
     }
 
-    .submit-btn:hover {
+    .manual-test button:hover {
       background-color: #218838;
     }
 
@@ -104,19 +92,17 @@
       color: #aaa;
     }
 
-    @media (max-width: 480px) {
+    @media (min-width: 500px) {
       .manual-test {
-        flex-direction: column;
+        flex-direction: row;
       }
 
-      .manual-test input,
+      .manual-test input {
+        flex: 1;
+      }
+
       .manual-test button {
-        width: 100%;
-        flex: none;
-      }
-
-      h2 {
-        font-size: 18px;
+        width: 120px;
       }
     }
   </style>
@@ -126,12 +112,12 @@
     <h2>🤖 Bot Assistant Panel</h2>
 
     <div id="conversation" class="conversation">
-      <!-- Q&A pairs will appear here -->
+      <!-- Q&A pairs appear here -->
     </div>
 
     <div class="manual-test">
-      <input type="text" id="manualQuestion" placeholder="Please enter the question here" />
-      <button class="submit-btn" onclick="testBotReply()">Submit</button>
+      <input type="text" id="manualQuestion" placeholder="Type your question..." />
+      <button onclick="testBotReply()">Submit</button>
     </div>
 
     <div class="footer">Powered by Bot@Work</div>
@@ -139,6 +125,7 @@
 
   <script>
     let lastAnswerBox = null;
+    let conversationHistory = [];
 
     function appendQA(question, answer) {
       const convDiv = document.getElementById("conversation");
@@ -179,11 +166,18 @@
     }
 
     async function getBotReply(question) {
+      // Compose full context
+      let contextText = "";
+      for (const pair of conversationHistory) {
+        contextText += `Visitor: ${pair.q}\nBot: ${pair.a}\n`;
+      }
+      contextText += `Visitor: ${question}`;
+
       const payload = {
         data: {
           payload: {
             override_model: "sonar",
-            clientQuestion: question
+            clientQuestion: contextText
           }
         },
         should_stream: false
@@ -215,8 +209,13 @@
       appendQA(question, "Thinking... 🤔");
 
       getBotReply(question)
-        .then(updateLastAnswer)
-        .catch(() => updateLastAnswer("❌ Error contacting bot."));
+        .then((botReply) => {
+          updateLastAnswer(botReply);
+          conversationHistory.push({ q: question, a: botReply });
+        })
+        .catch(() => {
+          updateLastAnswer("❌ Error contacting bot.");
+        });
 
       questionInput.value = "";
     }

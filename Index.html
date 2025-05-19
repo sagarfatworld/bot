@@ -2,8 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bot Assistant</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       background-color: #f9f9f9;
@@ -11,6 +16,7 @@
       padding: 20px;
       color: #333;
     }
+
     .container {
       background-color: #fff;
       border-radius: 12px;
@@ -18,28 +24,36 @@
       padding: 20px 30px;
       max-width: 600px;
       margin: auto;
+      display: flex;
+      flex-direction: column;
     }
+
     h2 {
       margin-top: 0;
       font-size: 22px;
       color: #2c3e50;
+      text-align: center;
     }
+
     .conversation {
       max-height: 400px;
       overflow-y: auto;
       padding-right: 10px;
       margin-bottom: 20px;
     }
+
     .qa-pair {
       margin-bottom: 20px;
       border-bottom: 1px solid #eee;
       padding-bottom: 10px;
     }
+
     .label {
       font-weight: bold;
       margin-bottom: 5px;
       color: #555;
     }
+
     .box {
       background-color: #f4f6f8;
       border: 1px solid #ddd;
@@ -47,27 +61,52 @@
       padding: 12px;
       font-size: 16px;
       white-space: pre-wrap;
+      word-wrap: break-word;
     }
+
     .manual-test {
       display: flex;
+      flex-direction: row;
       gap: 10px;
-      margin-top: 10px;
+      flex-wrap: wrap;
     }
+
     .manual-test input {
-      flex: 1;
+      flex: 1 1 60%;
+      min-width: 150px;
       padding: 10px;
       font-size: 16px;
     }
+
     .manual-test button {
+      flex: 1 1 35%;
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
     }
+
     .footer {
       text-align: center;
       margin-top: 20px;
       font-size: 12px;
       color: #aaa;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 480px) {
+      .manual-test {
+        flex-direction: column;
+      }
+
+      .manual-test input,
+      .manual-test button {
+        width: 100%;
+        flex: none;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
     }
   </style>
 </head>
@@ -88,10 +127,8 @@
   </div>
 
   <script>
-    // Keep track of the last answer box to update bot replies
     let lastAnswerBox = null;
 
-    // Append Q&A pair to the conversation panel
     function appendQA(question, answer) {
       const convDiv = document.getElementById("conversation");
       const pairDiv = document.createElement("div");
@@ -124,14 +161,12 @@
       lastAnswerBox = aBox;
     }
 
-    // Update the last bot answer displayed in the panel
     function updateLastAnswer(text) {
       if (lastAnswerBox) {
         lastAnswerBox.innerText = text;
       }
     }
 
-    // Call your Bot@Work API with visitor question
     async function getBotReply(question) {
       const payload = {
         data: {
@@ -154,15 +189,13 @@
         });
 
         const data = await res.json();
-    console.log("API Response:", data);
-    return data?.data?.content || data?.message || "🤖 No response from bot.";
-  } catch (e) {
-    console.error("API Error:", e);
-    return "❌ Error contacting bot.";
-  }
-}
+        return data?.data?.content || data?.message || "🤖 No response from bot.";
+      } catch (e) {
+        console.error("API Error:", e);
+        return "❌ Error contacting bot.";
+      }
+    }
 
-    // Function to test bot reply manually
     function testBotReply() {
       const questionInput = document.getElementById("manualQuestion");
       const question = questionInput.value.trim();
@@ -171,12 +204,8 @@
       appendQA(question, "Thinking... 🤔");
 
       getBotReply(question)
-        .then((botReply) => {
-          updateLastAnswer(botReply);
-        })
-        .catch((err) => {
-          updateLastAnswer("❌ Error contacting bot.");
-        });
+        .then(updateLastAnswer)
+        .catch(() => updateLastAnswer("❌ Error contacting bot."));
 
       questionInput.value = "";
     }

@@ -85,6 +85,18 @@
       cursor: pointer;
     }
 
+    .submit-btn {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      transition: background-color 0.3s ease;
+    }
+
+    .submit-btn:hover {
+      background-color: #218838;
+    }
+
     .footer {
       text-align: center;
       margin-top: 20px;
@@ -92,7 +104,6 @@
       color: #aaa;
     }
 
-    /* Responsive tweaks */
     @media (max-width: 480px) {
       .manual-test {
         flex-direction: column;
@@ -120,7 +131,7 @@
 
     <div class="manual-test">
       <input type="text" id="manualQuestion" placeholder="Type a test question..." />
-      <button onclick="testBotReply()">Test Bot</button>
+      <button class="submit-btn" onclick="testBotReply()">Submit</button>
     </div>
 
     <div class="footer">Powered by Bot@Work</div>

@@ -20,12 +20,14 @@
       margin: auto;
     }
     h2 {
+      margin-top: 0;
       font-size: 22px;
       color: #2c3e50;
     }
     .conversation {
       max-height: 400px;
       overflow-y: auto;
+      padding-right: 10px;
       margin-bottom: 20px;
     }
     .qa-pair {
@@ -46,8 +48,24 @@
       font-size: 16px;
       white-space: pre-wrap;
     }
+    .manual-test {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .manual-test input {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+    }
+    .manual-test button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
     .footer {
       text-align: center;
+      margin-top: 20px;
       font-size: 12px;
       color: #aaa;
     }
@@ -56,17 +74,26 @@
 <body>
   <div class="container">
     <h2>🤖 Bot Assistant Panel</h2>
-    <div id="conversation" class="conversation"></div>
+
+    <div id="conversation" class="conversation">
+      <!-- Q&A pairs will appear here -->
+    </div>
+
+    <div class="manual-test">
+      <input type="text" id="manualQuestion" placeholder="Type a test question..." />
+      <button onclick="testBotReply()">Test Bot</button>
+    </div>
+
     <div class="footer">Powered by Bot@Work</div>
   </div>
 
   <script>
-    const BACKEND_URL = "https://your-backend-url.onrender.com"; // Change this to your actual backend URL
+    // Keep track of the last answer box to update bot replies
+    let lastAnswerBox = null;
 
+    // Append Q&A pair to the conversation panel
     function appendQA(question, answer) {
       const convDiv = document.getElementById("conversation");
-      convDiv.innerHTML = ""; // Show only latest
-
       const pairDiv = document.createElement("div");
       pairDiv.className = "qa-pair";
 
@@ -80,7 +107,7 @@
 
       const aLabel = document.createElement("div");
       aLabel.className = "label";
-      aLabel.innerText = "Bot Suggestion:";
+      aLabel.innerText = "Bot's Answer:";
 
       const aBox = document.createElement("div");
       aBox.className = "box";
@@ -90,34 +117,69 @@
       pairDiv.appendChild(qBox);
       pairDiv.appendChild(aLabel);
       pairDiv.appendChild(aBox);
+
       convDiv.appendChild(pairDiv);
+      convDiv.scrollTop = convDiv.scrollHeight;
+
+      lastAnswerBox = aBox;
     }
 
-    async function fetchBotAnswer(chatId) {
+    // Update the last bot answer displayed in the panel
+    function updateLastAnswer(text) {
+      if (lastAnswerBox) {
+        lastAnswerBox.innerText = text;
+      }
+    }
+
+    // Call your Bot@Work API with visitor question
+    async function getBotReply(question) {
+      const payload = {
+        data: {
+          payload: {
+            override_model: "sonar",
+            clientQuestion: question
+          }
+        },
+        should_stream: false
+      };
+
       try {
-        const res = await fetch(`${BACKEND_URL}/get-bot-answer?chat_id=${chatId}`);
-        const data = await res.json();
-        if (data.question && data.botReply) {
-          appendQA(data.question, data.botReply);
-        } else {
-          appendQA("No visitor message", "No bot suggestion yet.");
-        }
-      } catch (err) {
-        console.error("Error fetching bot reply:", err);
-        appendQA("Error", "❌ Could not load bot suggestion.");
-      }
-    }
+        const res = await fetch("https://api.botatwork.com/trigger-task/42eaa2c8-e8aa-43ad-b9b5-944981bce2a2", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": "bf2e2d7e409bc0d7545e14ae15a773a3"
+          },
+          body: JSON.stringify(payload)
+        });
 
-    // Get chat_id from query string
-    window.addEventListener("DOMContentLoaded", () => {
-      const params = new URLSearchParams(window.location.search);
-      const chatId = params.get("chat_id");
-      if (chatId) {
-        fetchBotAnswer(chatId);
-      } else {
-        appendQA("No chat selected", "Unable to find chat ID.");
-      }
-    });
+        const data = await res.json();
+    console.log("API Response:", data);
+    return data?.data?.content || data?.message || "🤖 No response from bot.";
+  } catch (e) {
+    console.error("API Error:", e);
+    return "❌ Error contacting bot.";
+  }
+}
+
+    // Function to test bot reply manually
+    function testBotReply() {
+      const questionInput = document.getElementById("manualQuestion");
+      const question = questionInput.value.trim();
+      if (!question) return;
+
+      appendQA(question, "Thinking... 🤔");
+
+      getBotReply(question)
+        .then((botReply) => {
+          updateLastAnswer(botReply);
+        })
+        .catch((err) => {
+          updateLastAnswer("❌ Error contacting bot.");
+        });
+
+      questionInput.value = "";
+    }
   </script>
 </body>
 </html>

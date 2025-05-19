@@ -54,9 +54,23 @@
       font-size: 12px;
       color: #aaa;
     }
+    .status-indicator {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      padding: 5px 10px;
+      border-radius: 5px;
+      background: #ff4444;
+      color: white;
+    }
+    .status-indicator.connected {
+      background: #44ff44;
+    }
   </style>
 </head>
 <body>
+  <div id="status" class="status-indicator">Disconnected</div>
+  
   <div class="container">
     <h2>🤖 Bot Assistant Panel </h2>
 
@@ -71,10 +85,14 @@
   <script src="https://unpkg.com/@livechat/agent-app-sdk@1.6.3/dist/agentapp.umd.min.js"></script>
 
   <script>
-    // Keep track of the last answer box to update bot replies
     let lastAnswerBox = null;
 
-    // Append Q&A pair to the conversation panel
+    function updateStatus(status) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = status;
+      statusEl.className = 'status-indicator ' + (status === 'Connected' ? 'connected' : '');
+    }
+
     function appendQA(question, answer) {
       const convDiv = document.getElementById("conversation");
       const pairDiv = document.createElement("div");
@@ -107,14 +125,12 @@
       lastAnswerBox = aBox;
     }
 
-    // Update the last bot answer displayed in the panel
     function updateLastAnswer(text) {
       if (lastAnswerBox) {
         lastAnswerBox.innerText = text;
       }
     }
 
-    // 🔄 Updated getBotReply function with enhanced error handling
     async function getBotReply(question) {
       const payload = {
         data: {
@@ -145,26 +161,47 @@
       }
     }
 
-    // Initialize LiveChat Agent App SDK and listen for visitor messages
-    window.LiveChatAgentAppSDK.createWidget().then(widget => {
-      widget.on('message', async (message) => {
-        if (message.author.type === 'visitor') {
-          const visitorMessage = message.text;
+    // Initialize LiveChat widget
+    window.LiveChatAgentAppSDK.createWidget()
+      .then(widget => {
+        console.log("LiveChat SDK initialized");
+        updateStatus('Connected');
 
-          appendQA(visitorMessage, "Thinking... 🤔");
+        widget.on('message', async (message) => {
+          console.log('Received message:', message);
 
-          try {
-            const botReply = await getBotReply(visitorMessage);
-            updateLastAnswer(botReply);
+          if (message && message.author && message.author.type === 'visitor') {
+            const visitorMessage = message.text;
+            console.log('Processing visitor message:', visitorMessage);
 
-            // Send bot reply as an agent message into chat window
-            widget.sendMessage(botReply);
-          } catch (err) {
-            updateLastAnswer("❌ Error contacting bot.");
+            appendQA(visitorMessage, "Thinking... 🤔");
+
+            try {
+              const botReply = await getBotReply(visitorMessage);
+              updateLastAnswer(botReply);
+              await widget.sendMessage(botReply);
+              console.log('Bot reply sent:', botReply);
+            } catch (err) {
+              console.error('Error processing message:', err);
+              updateLastAnswer("❌ Error processing message");
+            }
           }
-        }
+        });
+
+        widget.on('error', (error) => {
+          console.error('LiveChat error:', error);
+          updateStatus('Error');
+        });
+
+        widget.on('disconnected', () => {
+          console.log('Disconnected from LiveChat');
+          updateStatus('Disconnected');
+        });
+      })
+      .catch(error => {
+        console.error('Failed to initialize LiveChat:', error);
+        updateStatus('Initialization Failed');
       });
-    });
   </script>
 </body>
 </html>

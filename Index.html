@@ -55,6 +55,33 @@
       padding: 12px;
       font-size: 16px;
       white-space: pre-wrap;
+      position: relative;
+    }
+
+    .copy-icon {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+.copy-icon:hover {
+    opacity: 1;
+}
+
+    
+
+    .copy-feedback {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      background: #28a745;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: none;
     }
 
     .manual-test {
@@ -135,51 +162,103 @@
 
   <script>
     let lastAnswerBox = null;
+    let lastCopyIcon = null;
     let conversationHistory = [];
 
     function appendQA(question, answer) {
-      const convDiv = document.getElementById("conversation");
-      const pairDiv = document.createElement("div");
-      pairDiv.className = "qa-pair";
+    const convDiv = document.getElementById("conversation");
+    const pairDiv = document.createElement("div");
+    pairDiv.className = "qa-pair";
 
-      const qLabel = document.createElement("div");
-      qLabel.className = "label";
-      qLabel.innerText = "Visitor Question:";
+    const qLabel = document.createElement("div");
+    qLabel.className = "label";
+    qLabel.innerText = "Visitor Question:";
 
-      const qBox = document.createElement("div");
-      qBox.className = "box";
-      qBox.innerText = question;
+    const qBox = document.createElement("div");
+    qBox.className = "box";
+    qBox.innerText = question;
 
-      const aLabel = document.createElement("div");
-      aLabel.className = "label";
-      aLabel.innerText = "Bot's Answer:";
+    const aLabel = document.createElement("div");
+    aLabel.className = "label";
+    aLabel.innerText = "Bot's Answer:";
 
-      const aBox = document.createElement("div");
-      aBox.className = "box";
-      aBox.innerText = answer;
+    const aBox = document.createElement("div");
+    aBox.className = "box";
+    aBox.innerText = answer;
 
-      pairDiv.appendChild(qLabel);
-      pairDiv.appendChild(qBox);
-      pairDiv.appendChild(aLabel);
-      pairDiv.appendChild(aBox);
+    // Create copy icon as SVG directly (hidden initially)
+    const copyIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    copyIcon.setAttribute("width", "20");
+    copyIcon.setAttribute("height", "20");
+    copyIcon.setAttribute("viewBox", "0 0 24 24");
+    copyIcon.setAttribute("fill", "none");
+    copyIcon.setAttribute("stroke", "currentColor");
+    copyIcon.setAttribute("stroke-width", "2");
+    copyIcon.setAttribute("stroke-linecap", "round");
+    copyIcon.setAttribute("stroke-linejoin", "round");
+    copyIcon.classList.add("copy-icon");
+    copyIcon.style.display = 'none';
+    copyIcon.innerHTML = `
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+    `;
 
-      convDiv.appendChild(pairDiv);
-      convDiv.scrollTop = convDiv.scrollHeight;
+    // Create feedback element
+    const copyFeedback = document.createElement("div");
+    copyFeedback.className = "copy-feedback";
+    copyFeedback.textContent = "Copied!";
 
-      lastAnswerBox = aBox;
-    }
+    // Add click handler for copying
+    copyIcon.onclick = async () => {
+        try {
+            await navigator.clipboard.writeText(aBox.innerText);
+            copyFeedback.style.display = 'block';
+            setTimeout(() => {
+                copyFeedback.style.display = 'none';
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+    };
+
+    // Add copy icon and feedback to answer box
+    aBox.appendChild(copyIcon);
+    aBox.appendChild(copyFeedback);
+
+    pairDiv.appendChild(qLabel);
+    pairDiv.appendChild(qBox);
+    pairDiv.appendChild(aLabel);
+    pairDiv.appendChild(aBox);
+
+    convDiv.appendChild(pairDiv);
+    convDiv.scrollTop = convDiv.scrollHeight;
+
+    lastAnswerBox = aBox;
+    lastCopyIcon = copyIcon;
+}
 
     function updateLastAnswer(text) {
-      if (lastAnswerBox) {
+    if (lastAnswerBox) {
+        // Save the copy icon and feedback elements
+        const copyIcon = lastAnswerBox.querySelector('.copy-icon');
+        const copyFeedback = lastAnswerBox.querySelector('.copy-feedback');
+        
+        // Update the text
         lastAnswerBox.innerText = text;
-      }
+        
+        // Re-append the copy icon and feedback
+        if (copyIcon) {
+            copyIcon.style.display = 'block';
+            lastAnswerBox.appendChild(copyIcon);
+            lastAnswerBox.appendChild(copyFeedback);
+        }
     }
+}
 
     async function getBotReply(question) {
-      // Compose full context
       let contextText = "";
       for (const pair of conversationHistory) {
-        contextText += `Visitor: ${pair.q}\nBot: ${pair.a}\n`;
+contextText += `Visitor: ${pair.q}\nBot: ${pair.a}\n`;
       }
       contextText += `Visitor: ${question}`;
 
